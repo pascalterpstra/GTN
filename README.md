@@ -77,8 +77,6 @@ Download the file named: img_align_celeba.zip from [this link](https://drive.goo
 │   │   ├── img_align_celeba
 
 
-# Training and generating samples post-training:
-
 ### Changing the default settings (skip to next section if not needed)
 The default dimension is d=100. This can be modified in conf.py.
 Other default settings can be changed either at the top of the .py files, or (in the celeba_gtn.py file) you can comment out the lines using sys arguments at the top and pass system arguments instead. Note that the setting n_hidden_layers has no effect besides controlling the name of the output folder.
@@ -134,11 +132,11 @@ You can see the generated samples for every epoch of improvement in IS in the wa
 
 Follow the instructions described earlier for CelebA applied to hap_gtn.py instead of to celeba_gtn.py.
 
-## Training the GTN using pretrained weights and latent representations:
+## Using pretrained weights and latent representations:
 
 You can skip the autoencoder training to immediately train the GTN by downloading the autoencoder weights and latent representations from the links below, placing them in the correct folders as described, and then running XX_gtn.py. 
 
-You can also skip training the GTN to immediately start generating samples by also downloading the gtn weights, setting train=False in XX_gtn.py and running it. This will start to produce both real and generated samples in the out/<DATASET_NAME>/<RUN_NAME> folder.
+You can also skip training the GTN to immediately start generating samples by also downloading the GTN weights (in addition to the autoencoder weights and latent representations), setting train=False in XX_gtn.py and running it. This will start to produce both real and generated samples in the out/<DATASET_NAME>/<RUN_NAME> folder.
 
 ### Autoencoder weights:
 
