@@ -21,6 +21,7 @@ Below are instructions on how to run the following examples from the paper:
 4. CelebA
 5. HaP
 6. Using pretrained weights and latent representations (CelebA and HaP)
+7. Misc info
 
 The project uses Python 3.7.
 
@@ -35,7 +36,7 @@ For your convenience, the CelebA and HaP scripts contain wandb tracking. In both
 FYI (in case you require these files for your own purposes): In all examples that contain an autoencoder, the files it generates can be found under data (for the latent representations) or res (for the model weights). The GTN weights will be saved in the out folder.
 
 
-## Swiss-Roll
+## 1. Swiss-Roll
 
 Note that if you have installed the packages in a new virtual environment, the first time the prep script below runs, it might be slow (otherwise it takes about a second).
 
@@ -47,7 +48,7 @@ python3 swiss_roll_gtn.py
 
 You can navigate to the out/test folder to see the randomly generated samples all plotted together in a scatter plot using the trained GTN.
 
-## 2D-Uniform
+## 2. 2D-Uniform
 
 First run the script that prepares the data:
 python3 uniform_prep.py
@@ -57,7 +58,7 @@ python3 uniform_gtn.py
 
 You can navigate to the out/test folder to see the randomly generated samples all plotted together in a scatter plot using the trained GTN.
 
-## MNIST
+## 3. MNIST
 
 The default dimension is d=5. If you wish to change this, you can do so in conf.py.
 
@@ -69,7 +70,7 @@ python3 mnist_gtn.py
 
 You can navigate to the out/<run_name> folder to see the training process, including the randomly generated samples across epochs of improvement, as described in the paper.
 
-## CelebA
+## 4. CelebA
 
 Download the file named: img_align_celeba.zip from [this link](https://drive.google.com/drive/folders/0B7EVK8r0v71pTUZsaXdaSnZBZzg?resourcekey=0-rJlzl934LzC-Xp28GeIBzQ) (reachable via the Google Drive link mentioned [here](https://drive.google.com/drive/folders/0B7EVK8r0v71pWEZsZE9oNnFzTm8?resourcekey=0-5BR16BdXnb8hVj6CNHKzLg&usp=sharing) --> Img --> img_align_celeba.zip) to the data/CelebA folder and unzip there so that your folder hierarchy looks like this:
 
@@ -101,7 +102,7 @@ You can see the generated samples for every epoch of improvement in IS in the wa
 
 In the file celeba_gtn.py you will see settings at the top. You can set train=False. Doing so and running celeba_gtn.py will generate two folders in the out/CelebA folder -- real and generated. There you can find both real decoded images and generated images, respectively. You can also change other settings there, e.g. to produce interpolations you can set interpolate=True. 
 
-## HaP
+## 5. HaP
 
 Download the file 'archive' using the download button in this [link](https://www.kaggle.com/datasets/shyambhu/hands-and-palm-images-dataset) to the data/HaP folder and extract it there. Rename the extracted folder to 'hands_kaggle' so that your folder hierarchy looks like this:
 
@@ -137,11 +138,11 @@ You can see the generated samples for every epoch of improvement in IS in the wa
 
 Follow the instructions described earlier for CelebA applied to hap_gtn.py instead of to celeba_gtn.py.
 
-## Using pretrained weights and latent representations:
+## 6. Using pretrained weights and latent representations:
 
-You can skip the autoencoder training to immediately train the GTN by downloading the autoencoder weights and latent representations from the links below, placing them in the correct folders as described, and then running XX_gtn.py. 
+You can skip the autoencoder training to immediately train the GTN by downloading the autoencoder weights and latent representations from the links below, placing them in the correct folders as described, and then running <DATASET_NAME>_gtn.py. 
 
-You can also skip training the GTN to immediately start generating samples by also downloading the GTN weights (in addition to the autoencoder weights and latent representations), setting train=False in XX_gtn.py and running it. This will start to produce both real and generated samples in the out/<DATASET_NAME>/<RUN_NAME> folder.
+You can also skip training the GTN to immediately start generating samples by also downloading the GTN weights (in addition to the autoencoder weights and latent representations), setting train=False in <DATASET_NAME>_gtn.py and running it. This will start to produce both real and generated samples in the ```out/<DATASET_NAME>/<RUN_NAME>``` folder.
 
 ### Autoencoder weights:
 
@@ -160,3 +161,10 @@ Download the folder containing the encoded data for the desired dataset and dime
 Download the folder containing the GTN weights for the desired dataset and dimension from the following links, and place the folder under ```out/<DATASET_NAME>``` (e.g. for CelebA, this should result in: ```data/CelebA/size_64_d_XX../```  and for HaP: ```data/HaP/d_XX.../```):
 - [CelebA GTN weights](https://drive.google.com/drive/folders/1-lOB4wAVk2Yh6Mkm_KZJQxbATaytiWwo?usp=drive_link)
 - [HaP GTN weights](https://drive.google.com/drive/folders/1rNtkb9-0XwRlxmnh3i318Jy2Bjta5yDU?usp=sharing)
+
+
+## 7. Misc info
+
+For IS calculations we used the included src->IScore code which was obtained from [here](https://github.com/sbarratt/inception-score-pytorch).
+
+For FID calculations we used [this package](https://github.com/mseitzer/pytorch-fid) applied to the two paths to: ```real``` and ```generated``` that are created in the relevant out subfolder (see earlier sections on generating samples). See the paper for info on the number of samples.   
