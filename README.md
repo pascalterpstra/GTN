@@ -13,8 +13,6 @@ If you find the paper useful, please cite:
 }
 ```
 
-The appendix can be downloaded from [this link](https://drive.google.com/file/d/1flBj8_FR8hZcOvBULOhAOD5s3W2tffh2/view?usp=sharing).
-
 Below are instructions on how to run the following examples from the paper:
 
 1. Swiss-Roll
