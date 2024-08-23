@@ -31,7 +31,7 @@ Unless stated otherwise, the assumption is that the commands are run from the sr
 
 Before following any of these guidelines below, make sure you install the requirements in requirements.txt using the following command run from the base directory (above src):
 
-pip3 install -r requirements.txt
+```pip3 install -r requirements.txt```
 
 For your convenience, the CelebA and HaP scripts contain wandb tracking. In both, you will find a placeholder for your wandb key. The wandb install version is included in the requirements.txt. If you do not wish to use wandb, simply comment out all wandb blocks of code in the CelebA and HaP scripts, and remove it from requirements.txt.
 
