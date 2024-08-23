@@ -13,7 +13,7 @@ If you find the paper useful, please cite:
 }
 ```
 
-Below are instructions on how to run the following examples from the paper:
+Below are instructions on how to reproduce the examples from the paper. The instructions include the following sections:
 
 1. Swiss-Roll
 2. 2D-Uniform
