@@ -1,8 +1,8 @@
 # Generative Topological Networks (GTNs)
 
-The code for: [paper: Generative Topological Networks](https://arxiv.org/abs/2406.15152)
+The code for the [paper: Generative Topological Networks](https://arxiv.org/abs/2406.15152)
 
-If you find this useful, please cite:
+If you find the paper useful, please cite:
 
 ```
 @article{levy2024generative,
@@ -12,6 +12,8 @@ If you find this useful, please cite:
   year={2024}
 }
 ```
+
+The appendix can be downloaded from [this link](https://drive.google.com/file/d/1flBj8_FR8hZcOvBULOhAOD5s3W2tffh2/view?usp=sharing).
 
 Below are instructions on how to run the following examples from the paper:
 
@@ -23,9 +25,11 @@ Below are instructions on how to run the following examples from the paper:
 6. Using pretrained weights and latent representations (CelebA and HaP)
 7. Misc info
 
-The project uses Python 3.7.
+#### Setup and preliminaries
 
-Unless stated otherwise, the assumption is that the commands are run from within the src folder.
+The project was developed using Python 3.7. For GPU specifications, see the appendix mentioned above.
+
+Unless stated otherwise, the assumption is that the commands are run from the src folder.
 
 Before following any of these guidelines below, make sure you install the requirements in requirements.txt using the following command run from the base directory (above src):
 
