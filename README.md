@@ -42,21 +42,17 @@ FYI (in case you require these files for your own purposes): In all examples tha
 
 Note that if you have installed the packages in a new virtual environment, the first time the prep script below runs, it might be slow (otherwise it takes about a second).
 
-First run the script that prepares the data (cd to src first):
-python3 swiss_roll_prep.py
+First run the script that prepares the data (cd to src first): ```python3 swiss_roll_prep.py```
 
-Then run the script that trains the GTN:
-python3 swiss_roll_gtn.py
+Then run the script that trains the GTN: ```python3 swiss_roll_gtn.py```
 
 You can navigate to the out/test folder to see the randomly generated samples all plotted together in a scatter plot using the trained GTN.
 
 ## 2. 2D-Uniform
 
-First run the script that prepares the data:
-python3 uniform_prep.py
+First run the script that prepares the data: ```python3 uniform_prep.py```
 
-Then run the script that trains the GTN:
-python3 uniform_gtn.py
+Then run the script that trains the GTN: ```python3 uniform_gtn.py```
 
 You can navigate to the out/test folder to see the randomly generated samples all plotted together in a scatter plot using the trained GTN.
 
@@ -64,11 +60,9 @@ You can navigate to the out/test folder to see the randomly generated samples al
 
 The default dimension is d=5. If you wish to change this, you can do so in conf.py.
 
-First run the autoencoder (we recommend using a GPU for this).
-python3 mnist_autoencoder.py
+First run the autoencoder (we recommend using a GPU for this). ```python3 mnist_autoencoder.py```
 
-Then run the script that trains the GTN (doesn't require a GPU):
-python3 mnist_gtn.py
+Then run the script that trains the GTN (doesn't require a GPU): ```python3 mnist_gtn.py```
 
 You can navigate to the out/<run_name> folder to see the training process, including the randomly generated samples across epochs of improvement, as described in the paper.
 
@@ -90,11 +84,9 @@ Other default settings can be changed either at the top of the .py files, or (in
 ### Training
 In both of the following commands you can track the progress using the built-in wandb script by adding your wandb key in the designated placeholder ('YOUR_KEY') in each of these .py files.
 
-First run the autoencoder (use a GPU for this):
-python3 celeba_autoencoder.py
+First run the autoencoder (use a GPU for this): ```python3 celeba_autoencoder.py```
 
-Then run the script that trains the GTN (use a GPU for this):
-python3 celeba_gtn.py
+Then run the script that trains the GTN (use a GPU for this): ``` python3 celeba_gtn.py```
 
 Note that the split into data subsets is already included under data/csv, and was created using the file 'list_eval_partition.txt' that can be found under the same Google Drive link mentioned above --> Eval folder.
 
@@ -126,11 +118,9 @@ Other default settings can be changed either at the top of the .py files, or (in
 
 In both of the following commands you can track the progress using the built-in wandb script by adding your wandb key in the designated placeholder ('YOUR_KEY') in each of these .py files.
 
-First run the autoencoder (use a GPU for this):
-python3 hap_autoencoder.py
+First run the autoencoder (use a GPU for this): ```python3 hap_autoencoder.py```
 
-Then run the script that trains the GTN (use a GPU for this):
-python3 hap_gtn.py
+Then run the script that trains the GTN (use a GPU for this): ```python3 hap_gtn.py```
 
 Note that the split into data subsets is already included under data/HaP, and was obtained using a random assignment.
 
