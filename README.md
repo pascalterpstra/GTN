@@ -169,6 +169,6 @@ Download the folder containing the GTN weights for the desired dataset and dimen
 
 ## 7. Misc info
 
-For IS calculations we used the included src->IScore code which was obtained from [here](https://github.com/sbarratt/inception-score-pytorch).
+IS calculations use the included src->IScore code which was obtained from [here](https://github.com/sbarratt/inception-score-pytorch).
 
-For FID calculations we used [this package](https://github.com/mseitzer/pytorch-fid) applied to the two paths to: ```real``` and ```generated``` that are created in the relevant out subfolder (see earlier sections on generating samples). See the paper for info on the number of samples.   
+FID calculations were performed using [this package](https://github.com/mseitzer/pytorch-fid) applied to the paths to the folders: ```real``` and ```generated``` that are created in the relevant out subfolder (see earlier sections on generating samples). See the paper for additional info.   
