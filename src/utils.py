@@ -144,9 +144,10 @@ def calc_normalization_stats_from_train(path_train, dir_dataset):
 
 class NormalToTrgtDataset(Dataset):
     '''
-    Creates a dataset object that produces (y, x_y) pairs where y is from Y = Gaussian. Note that below, x and y represent
-    input and labels, respectively, as is custom (so x below is actually the y from the pair (y, x_y) and y below is actually
-    the x_y from the pair (y, x_y).
+    Creates a dataset object that produces (y, x_y) pairs where y is sampled from the standard normal distribution and
+    x_y is from the dataset (see paper).  The data samples x_y are assumed to be roughly 0-centred. Note that below,
+    x and y represent input and labels respectively, for consistency with typical training notation (so x below is
+    actually the y from the pair (y, x_y) and y below is actually the x_y from the pair (y, x_y).
     '''
     def __init__(self, trgt_filepath, dataset_path, subset, transform=None, target_transform=None, type="cosine"):
         self.trgt = torch.load(trgt_filepath, map_location=torch.device(DEVICE))
