@@ -149,21 +149,57 @@ class NormalToTrgtDataset(Dataset):
     x and y represent input and labels respectively, for consistency with typical training notation (so x below is
     actually the y from the pair (y, x_y) and y below is actually the x_y from the pair (y, x_y).
     '''
-    def __init__(self, trgt_filepath, dataset_path, subset, transform=None, target_transform=None, type="cosine"):
-        self.trgt = torch.load(trgt_filepath, map_location=torch.device(DEVICE))
-        # Choosing Gaussian as the source distribution (Gaussian):
-        self.x = torch.randn(self.trgt.shape, device=DEVICE)
+    def __init__(self, trgt_filepath, dataset_path, subset, transform=None, target_transform=None, type="cosine", n_samples_max=10 ** 8,
+                 train_mean=None, train_std=None, n_clusters=1, noise_target_by=0,
+                 kmeans=None, cluster_to_mean=None, cluster_to_std=None):
 
-        if 'x_{}.pt'.format(subset) in os.listdir(dataset_path) and 'y_{}.pt'.format(subset) in os.listdir(dataset_path):
-            x_filepath = dataset_path + 'x_{}.pt'.format(subset)
-            y_filepath = dataset_path + 'y_{}.pt'.format(subset)
-            print("Found dataset with cosine sim labels: {} and {}. Loading.".format(x_filepath, y_filepath))
-            self.x = torch.load(x_filepath, map_location=torch.device(DEVICE))
-            self.y = torch.load(y_filepath, map_location=torch.device(DEVICE))
+        self.trgt = torch.load(trgt_filepath, map_location=torch.device(DEVICE))[:n_samples_max]
+        self.cluster_to_target_norms = {}
+        self.d = self.trgt.shape[-1]
+        if noise_target_by > 0:
+            self.trgt = torch.normal(self.trgt, noise_target_by) #0.0001
+
+        if n_clusters > 1:
+            # if 'x_{}_{}_n_clusters_{}.pt'.format(subset, n_samples_max, n_clusters) in os.listdir(dataset_path) and 'y_{}_{}_n_clusters_{}.pt'.format(subset,
+            #                                                                                                   n_samples_max, n_clusters) in os.listdir(
+            #         dataset_path):
+            #     x_filepath = dataset_path + 'x_{}_{}_n_clusters_{}.pt'.format(subset, n_samples_max, n_clusters)
+            #     y_filepath = dataset_path + 'y_{}_{}_n_clusters_{}.pt'.format(subset, n_samples_max, n_clusters)
+            #     print("Found dataset with cosine sim label: {} and {}. Loading.".format(x_filepath, y_filepath))
+            #     self.x = torch.load(x_filepath, map_location=torch.device(DEVICE))
+            #     self.y = torch.load(y_filepath, map_location=torch.device(DEVICE))
+            # else:
+            clusters, kmeans = make_clusters(x=self.trgt, n_clusters=n_clusters, kmeans=kmeans)
+            self.kmeans = kmeans
+
+            (self.x, self.y, self.cluster_to_mean, self.cluster_to_std,
+             self.cluster_to_rays, self.cluster_to_sampling_weight) \
+                = combine_labels_from_clusters(clusters, cluster_to_mean, cluster_to_std, subset, self.trgt.shape[0])
+            torch.save(self.x, dataset_path + 'x_{}_{}_n_clusters_{}.pt'.format(subset, n_samples_max, n_clusters))
+            torch.save(self.y, dataset_path + 'y_{}_{}_n_clusters_{}.pt'.format(subset, n_samples_max, n_clusters))
+
+            torch.save(self.cluster_to_mean, dataset_path + '{}_cluster_to_mean_n_clusters_{}.pt'.format(subset, n_clusters))
+            torch.save(self.cluster_to_std, dataset_path + '{}_cluster_to_std_n_clusters_{}.pt'.format(subset, n_clusters))
+            torch.save(self.cluster_to_rays, dataset_path + '{}_cluster_to_rays_n_clusters_{}.pt'.format(subset, n_clusters))
+            torch.save(self.cluster_to_sampling_weight, dataset_path + '{}_cluster_to_sampling_weight_n_clusters_{}.pt'.format(subset, n_clusters))
+            torch.save(self.cluster_to_target_norms, dataset_path + '{}_cluster_to_target_norms_n_clusters_{}.pt'.format(subset, n_clusters))
+
         else:
-            self.x, self.y = create_labels(self.x, self.trgt, type=type)
-            torch.save(self.x, dataset_path + 'x_{}.pt'.format(subset))
-            torch.save(self.y, dataset_path + 'y_{}.pt'.format(subset))
+            if train_mean is not None and train_std is not None:
+                self.trgt = (self.trgt - train_mean) / train_std
+
+            self.x = torch.randn(self.trgt.shape, device=DEVICE)
+
+            # if 'x_{}_{}.pt'.format(subset, n_samples_max) in os.listdir(dataset_path) and 'y_{}_{}.pt'.format(subset,n_samples_max) in os.listdir(dataset_path):
+            #     x_filepath = dataset_path + 'x_{}_{}.pt'.format(subset, n_samples_max)
+            #     y_filepath = dataset_path + 'y_{}_{}.pt'.format(subset, n_samples_max)
+            #     print("Found dataset with cosine sim label: {} and {}. Loading.".format(x_filepath, y_filepath))
+            #     self.x = torch.load(x_filepath, map_location=torch.device(DEVICE))
+            #     self.y = torch.load(y_filepath, map_location=torch.device(DEVICE))
+            # else:
+            self.x, self.y = create_labels(self.x, self.trgt)
+            torch.save(self.x, dataset_path + 'x_{}_{}.pt'.format(subset, n_samples_max))
+            torch.save(self.y, dataset_path + 'y_{}_{}.pt'.format(subset, n_samples_max))
 
         self.transform = transform
         self.target_transform = target_transform
@@ -180,33 +216,77 @@ class NormalToTrgtDataset(Dataset):
             y = self.target_transform(y)
         return x, y
 
+def make_clusters(x, n_clusters, kmeans):
+    # from torch_kmeans import KMeans
+    from fast_pytorch_kmeans import KMeans
 
-class CelebaDataset(Dataset):
+    if kmeans is not None:
+        labels = kmeans.predict(x)
+    else:
+        # model = KMeans(n_clusters=n_clusters)
+        kmeans = KMeans(n_clusters=n_clusters, mode='euclidean', verbose=0)
+        labels = kmeans.fit_predict(x)
 
-    def __init__(self, csv_path, img_dir, attribute_name=None, transform=None):
-        df = pd.read_csv(csv_path, index_col=0)
-        self.df_attr = None
-        self.img_dir = img_dir
-        self.csv_path = csv_path
-        if attribute_name is not None: # if you wish to use list_attr_celeba.csv (see here below) -- you can downloaded it from Kaggle since the original file is faulty: https://www.kaggle.com/datasets/jessicali9530/celeba-dataset?select=list_attr_celeba.csv
-            self.df_attr = pd.read_csv('../res/list_attr_celeba.csv', index_col=0)
-            self.df_attr = self.df_attr.loc[self.df_attr[attribute_name] == 1]
-            ix_attr = df.index.intersection(self.df_attr.index)
-            df = df.loc[ix_attr]
-        self.img_names = df.index.values
-        self.transform = transform
+    clusters = {}
+    for i in range(n_clusters):
+        sample_idx_for_cluster = torch.where(labels == i)[-1]
+        samples_for_cluster = x[sample_idx_for_cluster]
+        clusters[i] = samples_for_cluster
+    print("Done clusters")
 
-    def __getitem__(self, index):
-        img = Image.open(os.path.join(self.img_dir,
-                                      self.img_names[index]))
+    # identify singleton or empty clusters and remove them
+    singleton_cluster_ids = []
+    for c in clusters.keys():
+        if len(clusters[c]) <= 1:
+            singleton_cluster_ids.append(c)
+    for c in singleton_cluster_ids:
+        del clusters[c]
+    print("Removed {} singleton or empty clusters.".format(len(singleton_cluster_ids)))
 
-        if self.transform is not None:
-            img = self.transform(img)
+    return clusters, kmeans
 
-        return img, torch.tensor([0])
 
-    def __len__(self):
-        return len(self.img_names)
+def combine_labels_from_clusters(clusters, cluster_to_mean, cluster_to_std, subset, n_data):
+    target = None
+    if subset == 'train':
+        cluster_ids = clusters.keys()
+    else:
+        cluster_ids = cluster_to_mean.keys()
+    cluster_to_rays, cluster_to_target_norms, cluster_to_sampling_weight = {}, {}, {}
+    if subset == 'train':
+        cluster_to_mean, cluster_to_std = {}, {}
+    for i in cluster_ids:
+        if i not in clusters.keys():
+            continue
+        target_cluster = torch.tensor(clusters[i], device=DEVICE)
+        if subset == 'train':
+            cluster_to_sampling_weight[i] = target_cluster.shape[0] / n_data
+        if subset == 'train':
+            target_mean_cluster, target_std_cluster = torch.mean(target_cluster, dim=0), torch.std(target_cluster, dim=0)
+        else:
+            target_mean_cluster, target_std_cluster = cluster_to_mean[i], cluster_to_std[i]
+        # target_mean_cluster = torch.mean(target_cluster, dim=0)
+        target_cluster = target_cluster - target_mean_cluster #/ target_std_cluster
+        s = torch.randn(target_cluster.shape, device=DEVICE)
+        source_cluster, target_cluster = create_labels(s, target_cluster)
+        # remove normalization from target and do the same for source:
+        target_cluster = target_cluster * target_std_cluster + target_mean_cluster
+        source_cluster = source_cluster * target_std_cluster + target_mean_cluster
+        # target_cluster = target_cluster + target_mean_cluster
+        # source_cluster = source_cluster + target_mean_cluster
+        if target is None:
+            target = target_cluster
+            source = source_cluster
+        else:
+            target = torch.cat([target, target_cluster], dim=0)
+            source = torch.cat([source, source_cluster], dim=0)
+        cluster_to_mean[i], cluster_to_std[i] = target_mean_cluster, target_std_cluster
+    # shuffling the training data
+    permuted_idx = np.random.permutation(range(len(target)))
+    target = target[permuted_idx]
+    source = source[permuted_idx]
+
+    return source, target, cluster_to_mean, cluster_to_std, cluster_to_rays, cluster_to_sampling_weight  # concatenates from all clusters source_cluster and target_cluster and randomly permutes them too
 
 
 class HandsDataset(Dataset):
@@ -246,7 +326,7 @@ class EncodedImagesDataset(Dataset):
         return x
 
 
-def create_labels(s, t, type="cosine"):
+def create_labels(s, t):
     '''
     Creates the labeled pairs (y, x_y) as described in the paper.
     :param s: tensor of shape n_samples  x  d (d = latent dimension, see paper)
@@ -255,9 +335,9 @@ def create_labels(s, t, type="cosine"):
     :return: source s with matching labels from target
     '''
     print("Creating labeled data.")
-    assert (type == "cosine") or (type == "angular_dist"), "You must choose as 'type' one of: 'cosine' or 'angular_dist'. "
 
     t_norm, s_norm = torch.linalg.norm(t,dim=1), torch.linalg.norm(s, dim=1)
+    # sort t and s by norm
     t_norm_sorted, t_norm_sort_indices = torch.sort(t_norm, dim=0)
     _, s_norm_sort_indices = torch.sort(s_norm, dim=0)
     s, t = s[s_norm_sort_indices], t[t_norm_sort_indices]
@@ -270,24 +350,16 @@ def create_labels(s, t, type="cosine"):
     for i in tqdm(range(s.shape[0])):
         s_i = s[i]
 
-        if type == "angular_dist":
-            # min angular dist
-            # ---------------------
-            res = torch.div(torch.arccos(cos(s_i, t)), torch.pi)
-            min_ix = torch.argmin(res)
-            t_closest_angular = t[min_ix]
-            labels[i] = t_closest_angular
-            t = torch.cat((t[0:min_ix], t[min_ix + 1:]))  # what remains
-
-        if type == "cosine":
-            # max cosine similarity
-            #-----------------------
-            res = cos(s_i, t)
-            max_ix = torch.argmax(res)
-            t_closest_cos_sim = t[max_ix]
-            labels[i] = t_closest_cos_sim
-            t = torch.cat((t[0:max_ix], t[max_ix + 1:]))  # what remains
+        # max cosine similarity
+        #-----------------------
+        res = cos(s_i, t)
+        max_ix = torch.argmax(res)
+        # max_ix = 0
+        t_closest_cos_sim = t[max_ix]
+        labels[i] = t_closest_cos_sim
+        t = torch.cat((t[0:max_ix], t[max_ix + 1:]))  # what remains
 
     labels = labels.type(torch.float32)
 
     return s, labels
+

@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from mycolorpy import colorlist as mcp
+import random
+
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,10 +22,11 @@ from torch.optim import Adam
 
 from utils import *
 
-from mycolorpy import colorlist as mcp
+# dataset_path = '../data/2d_uniform/'
+# out_folder_base = '../out/2d_uniform/'
+dataset_path = '../data/2d_two_disjoint_uniforms/'
+out_folder_base = '../out/2d_two_disjoint_uniforms/'
 
-dataset_path = '../data/2d_uniform/'
-out_folder_base = '../out/2d_uniform/'
 out_folder_train = out_folder_base + 'train/'
 out_folder_val = out_folder_base + 'val/'
 out_folder_test = out_folder_base + 'test/'
@@ -31,18 +35,26 @@ out_folder_weights = out_folder_base + 'weights/'
 make_dirs([out_folder_train, out_folder_val, out_folder_test, out_folder_weights])
 
 x_dim = 2
-hidden_dim = x_dim + 4  # why +4? This is the minimum -- see p. 2 on RHS in https://arxiv.org/pdf/2305.18460.pdf
+d = x_dim
+hidden_dim =10  # why +4? This is the minimum -- see p. 2 on RHS in https://arxiv.org/pdf/2305.18460.pdf
 latent_dim = x_dim
 lr = 1e-3
 batch_size = 250
 epochs = 500
 tolerance = 3
+n_clusters = 100
+noise_target_by = 0.01
 
 assert os.path.exists(dataset_path + 'train.pt'), ("Did you run uniform_prep.py first? Couldn't find {}"
                                                    .format(dataset_path + 'train.pt'))
-train_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'train.pt', dataset_path=dataset_path, transform=None, subset='train')
-val_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'val.pt', dataset_path=dataset_path, transform=None, subset='val')
-test_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'test.pt', dataset_path=dataset_path, transform=None, subset='test')
+train_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'train.pt', dataset_path=dataset_path, transform=None,
+                                    subset='train', n_clusters=n_clusters, noise_target_by=noise_target_by)
+val_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'val.pt', dataset_path=dataset_path, transform=None,
+                                  subset='val', n_clusters=n_clusters, cluster_to_mean=train_dataset.cluster_to_mean,
+                                  cluster_to_std=train_dataset.cluster_to_std, noise_target_by=noise_target_by)
+test_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'test.pt', dataset_path=dataset_path, transform=None,
+                                   subset='test', n_clusters=n_clusters, cluster_to_mean=train_dataset.cluster_to_mean,
+                                   cluster_to_std=train_dataset.cluster_to_std, noise_target_by=noise_target_by)
 
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=True)
 val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, num_workers=0, shuffle=True)
@@ -51,6 +63,46 @@ print(len(train_dataset))
 print(len(val_dataset))
 train_mean, train_std = torch.load(dataset_path+'train_mean.pt'), torch.load(dataset_path+ 'train_std.pt')
 
+cluster_to_sampling_weight = torch.load(dataset_path + 'train_cluster_to_sampling_weight_n_clusters_{}.pt'.format(n_clusters))
+cluster_to_mean, cluster_to_std = torch.load(dataset_path + 'train_cluster_to_mean_n_clusters_{}.pt'.format(n_clusters)), torch.load(dataset_path + 'train_cluster_to_std_n_clusters_{}.pt'.format(n_clusters))
+
+
+def make_global_samples_from_clusters(n_samples, cluster_to_mean, cluster_to_std ,cluster_to_sampling_weight):
+    # sampling from target rays in each cluster, with number of samples from cluster depending on size of cluster
+    # assert n_samples >= n_clusters, "Number of samples to generate smaller than number of clusters!"
+    s_samples_global = []
+
+    idx = [i for i in cluster_to_mean.keys() if i in cluster_to_sampling_weight.keys()]
+    random.shuffle(idx)
+
+    for id_cluster in idx:
+        m = cluster_to_mean[id_cluster]
+        n_to_sample_from_cluster = int(np.ceil(n_samples * cluster_to_sampling_weight[id_cluster]))
+
+        # # sampling on random rays centred around cluster mean
+        # rand_vectors = torch.randn((n_to_sample_from_cluster, d))
+        # # turning into unit vectors
+        # ray_samples_cluster = rand_vectors / torch.linalg.norm(rand_vectors, dim=1).repeat(d, 1).transpose(0, 1)
+        #
+        # # # sampling absolute values from a 1D normal distribution with cluster std
+        # abs_normal_1d_repeated = torch.abs(torch.randn(ray_samples_cluster.shape[0], device=DEVICE).repeat(d, 1).transpose(0, 1))
+        # # putting it 'on the ray' (changing the ray's length by multiplying the ray by the above random scalar)
+        # s_samples_local_cluster = ray_samples_cluster * abs_normal_1d_repeated
+        # # # adjusting to cluster std
+        # # s_samples_local_cluster = s_samples_local_cluster * cluster_to_std[id_cluster]
+
+        # sampling randomly in cluster
+        s_samples_local_cluster = torch.randn((n_to_sample_from_cluster, x_dim)) * cluster_to_std[id_cluster]
+
+        # adding m to local samples, currently treated as centred around cluster mean, to obtain global samples (from
+        # a vector with m being its origin to a vector with '0' being its origin)
+        s_samples_global_cluster = m + s_samples_local_cluster
+        s_samples_global.append(s_samples_global_cluster)
+
+    all_samples_global = torch.cat(s_samples_global)
+    randomly_chosen_ix = random.sample(range(len(all_samples_global)), n_samples)
+    all_samples_global = all_samples_global[randomly_chosen_ix, :]
+    return all_samples_global
 
 class h_hat(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
@@ -95,10 +147,10 @@ for epoch in range(epochs):
 
     for batch_idx, (x, y) in enumerate(train_loader):
 
-        x = x.view(batch_size, x_dim)
+        # x = x.view(batch_size, x_dim)
         x = x.to(DEVICE)
 
-        y = y.view(batch_size, x_dim)
+        # y = y.view(batch_size, x_dim)
         y = y.to(DEVICE)
 
         optimizer.zero_grad()
@@ -112,15 +164,15 @@ for epoch in range(epochs):
         optimizer.step()
 
     n_batches = batch_idx
-    avg_train_loss = overall_train_loss / (batch_idx * batch_size)
+    avg_train_loss = overall_train_loss / ((batch_idx+1) * batch_size)
     print("Epoch {} complete. Avg train loss: {}.".format(epoch, avg_train_loss))
 
     # PLOTTING
 
-    y_hat = y_hat * train_std + train_mean
+    # y_hat = y_hat * train_std + train_mean
     y_hat = y_hat.detach().numpy()
 
-    y = y * train_std + train_mean
+    # y = y * train_std + train_mean
     y = y.detach().numpy()
 
     x = x.detach().numpy()
@@ -157,10 +209,10 @@ for epoch in range(epochs):
 
         for batch_idx, (x, y) in enumerate(val_loader):
 
-            x = x.view(batch_size, x_dim)
+            # x = x.view(batch_size, x_dim)
             x = x.to(DEVICE)
 
-            y = y.view(batch_size, x_dim)
+            # y = y.view(batch_size, x_dim)
             y = y.to(DEVICE)
 
             y_hat = model(x)
@@ -168,8 +220,7 @@ for epoch in range(epochs):
 
             overall_val_loss += loss.item()
 
-        n_batches = batch_idx
-        avg_val_loss = overall_val_loss / (batch_idx * batch_size)
+        avg_val_loss = overall_val_loss / ((batch_idx+1) * batch_size)
         print("Average val loss: {}.".format(avg_val_loss))
 
         if avg_val_loss < best_val_loss:
@@ -179,10 +230,14 @@ for epoch in range(epochs):
             best_val_loss = avg_val_loss
             count_val_loss_plateau = 0
 
-            x = torch.randn((1000, x_dim))
+            # x = torch.randn((1000, x_dim))
+            # sampling from target rays
+            x = make_global_samples_from_clusters(batch_size,
+                                                  cluster_to_mean, cluster_to_std, cluster_to_sampling_weight)
+
             y_hat = model(x)
 
-            y_hat = y_hat * train_std + train_mean
+            # y_hat = y_hat * train_std + train_mean
             y_hat = y_hat.detach().numpy()
 
             x = x.detach().numpy()
@@ -218,10 +273,13 @@ model.load_state_dict(torch.load(out_folder_weights + 'weights_batch_{}_toleranc
 
 with torch.no_grad():
 
-    x = torch.randn((100000, x_dim))
+    # x = torch.randn((100000, x_dim))
+    # sampling from target rays
+    x = make_global_samples_from_clusters(1000,
+                                          cluster_to_mean, cluster_to_std, cluster_to_sampling_weight)
     y_hat = model(x)
 
-    y_hat = y_hat * train_std + train_mean
+    # y_hat = y_hat * train_std + train_mean
     y_hat = y_hat.detach().numpy()
 
     x = x.detach().numpy()
