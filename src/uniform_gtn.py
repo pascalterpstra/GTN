@@ -45,7 +45,8 @@ tolerance = 3
 n_clusters = 100
 noise_target_by = 0.01
 
-assert os.path.exists(dataset_path + 'train.pt'), ("Did you run uniform_prep.py first? Couldn't find {}"
+assert os.path.exists(dataset_path + 'train.pt'), ("Did you run <NAME_OF_DATA>_prep.py first? Couldn't find {} "
+                                                   "-- make sure you ran the correct one for the chosen dataset_path."
                                                    .format(dataset_path + 'train.pt'))
 train_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'train.pt', dataset_path=dataset_path, transform=None,
                                     subset='train', n_clusters=n_clusters, noise_target_by=noise_target_by)
