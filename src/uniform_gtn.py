@@ -80,18 +80,6 @@ def make_global_samples_from_clusters(n_samples, cluster_to_mean, cluster_to_std
         m = cluster_to_mean[id_cluster]
         n_to_sample_from_cluster = int(np.ceil(n_samples * cluster_to_sampling_weight[id_cluster]))
 
-        # # sampling on random rays centred around cluster mean
-        # rand_vectors = torch.randn((n_to_sample_from_cluster, d))
-        # # turning into unit vectors
-        # ray_samples_cluster = rand_vectors / torch.linalg.norm(rand_vectors, dim=1).repeat(d, 1).transpose(0, 1)
-        #
-        # # # sampling absolute values from a 1D normal distribution with cluster std
-        # abs_normal_1d_repeated = torch.abs(torch.randn(ray_samples_cluster.shape[0], device=DEVICE).repeat(d, 1).transpose(0, 1))
-        # # putting it 'on the ray' (changing the ray's length by multiplying the ray by the above random scalar)
-        # s_samples_local_cluster = ray_samples_cluster * abs_normal_1d_repeated
-        # # # adjusting to cluster std
-        # # s_samples_local_cluster = s_samples_local_cluster * cluster_to_std[id_cluster]
-
         # sampling randomly in cluster
         s_samples_local_cluster = torch.randn((n_to_sample_from_cluster, x_dim)) * cluster_to_std[id_cluster]
 
@@ -116,7 +104,6 @@ class h_hat(nn.Module):
         self.fc6 = nn.Linear(hidden_dim, output_dim)
 
         self.activation = nn.LeakyReLU(0.5)
-        # self.activation_out = nn.Tanh()
 
     def forward(self, x):
         h = self.activation(self.fc1(x))
@@ -148,10 +135,7 @@ for epoch in range(epochs):
 
     for batch_idx, (x, y) in enumerate(train_loader):
 
-        # x = x.view(batch_size, x_dim)
         x = x.to(DEVICE)
-
-        # y = y.view(batch_size, x_dim)
         y = y.to(DEVICE)
 
         optimizer.zero_grad()
@@ -170,12 +154,8 @@ for epoch in range(epochs):
 
     # PLOTTING
 
-    # y_hat = y_hat * train_std + train_mean
     y_hat = y_hat.detach().numpy()
-
-    # y = y * train_std + train_mean
     y = y.detach().numpy()
-
     x = x.detach().numpy()
 
     x_norm = np.array([np.linalg.norm(x[i]) for i in range(len(x))])
@@ -210,10 +190,7 @@ for epoch in range(epochs):
 
         for batch_idx, (x, y) in enumerate(val_loader):
 
-            # x = x.view(batch_size, x_dim)
             x = x.to(DEVICE)
-
-            # y = y.view(batch_size, x_dim)
             y = y.to(DEVICE)
 
             y_hat = model(x)
@@ -231,16 +208,13 @@ for epoch in range(epochs):
             best_val_loss = avg_val_loss
             count_val_loss_plateau = 0
 
-            # x = torch.randn((1000, x_dim))
             # sampling from target rays
             x = make_global_samples_from_clusters(batch_size,
                                                   cluster_to_mean, cluster_to_std, cluster_to_sampling_weight)
 
             y_hat = model(x)
 
-            # y_hat = y_hat * train_std + train_mean
             y_hat = y_hat.detach().numpy()
-
             x = x.detach().numpy()
 
             x_norm = np.array([np.linalg.norm(x[i]) for i in range(len(x))])
@@ -267,20 +241,18 @@ for epoch in range(epochs):
         if count_val_loss_plateau > tolerance:
             break
 
-# TESTING (generating from random using best weights and plotting)
+# TESTING (generating using best weights and plotting)
 
 model.eval()
 model.load_state_dict(torch.load(out_folder_weights + 'weights_batch_{}_tolerance_{}.pt'.format(batch_size, tolerance), map_location=torch.device(DEVICE)))
 
 with torch.no_grad():
 
-    # x = torch.randn((100000, x_dim))
-    # sampling from target rays
+    # sampling from clusters by weight
     x = make_global_samples_from_clusters(1000,
                                           cluster_to_mean, cluster_to_std, cluster_to_sampling_weight)
     y_hat = model(x)
 
-    # y_hat = y_hat * train_std + train_mean
     y_hat = y_hat.detach().numpy()
 
     x = x.detach().numpy()

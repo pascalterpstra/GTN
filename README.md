@@ -17,11 +17,12 @@ Below are instructions on how to reproduce the examples from the paper. The inst
 
 1. Swiss-Roll
 2. 2D-Uniform
-3. MNIST
-4. CelebA
-5. HaP
-6. Using pretrained weights and latent representations (CelebA and HaP)
-7. Misc info
+3. Two 2D disjoint uniforms
+4. MNIST
+5. CelebA
+6. HaP
+7. Using pretrained weights and latent representations (CelebA and HaP)
+8. Misc info
 
 #### Setup and preliminaries
 
@@ -52,11 +53,43 @@ You can navigate to the out/test folder to see the randomly generated samples al
 
 First run the script that prepares the data: ```python3 uniform_prep.py```
 
-Then run the script that trains the GTN: ```python3 uniform_gtn.py```
+Then in the the script that trains the GTN make sure to comment out:
 
-You can navigate to the out/test folder to see the randomly generated samples all plotted together in a scatter plot using the trained GTN.
+- ```dataset_path='../data/2d_two_disjoint_uniforms/'```
+- ```out_folder_base='../out/2d_two_disjoint_uniforms/'``` 
 
-## 3. MNIST
+and uncomment:
+
+- ```dataset_path='../data/2d_uniform/'```
+- ```out_folder_base='../out/2d_uniform/'``` 
+
+and then run ```python3 uniform_gtn.py```
+
+You can navigate to the out/2d_uniform/test folder to see the randomly generated samples all plotted together in a scatter plot using the trained GTN.
+
+
+## 3. Two 2D disjoint uniforms
+
+First run the script that prepares the data: ```python3 uniform_two_disjoint_prep.py```
+
+Then in the the script that trains the GTN make sure to comment out:
+
+- ```dataset_path='../data/2d_uniform/'```
+- ```out_folder_base='../out/2d_uniform/'``` 
+
+and uncomment:
+
+- ```dataset_path='../data/2d_two_disjoint_uniforms/'```
+- ```out_folder_base='../out/2d_two_disjoint_uniforms/'``` 
+
+and then run ```python3 uniform_gtn.py```
+
+You can navigate to the out/2d_two_disjoint_uniforms/test folder to see the randomly generated samples all plotted together in a scatter plot using the trained GTN.
+
+
+
+
+## 4. MNIST
 
 The default dimension is d=5. If you wish to change this, you can do so in conf.py.
 
@@ -66,7 +99,7 @@ Then run the script that trains the GTN (doesn't require a GPU): ```python3 mnis
 
 You can navigate to the out/<run_name> folder to see the training process, including the randomly generated samples across epochs of improvement, as described in the paper.
 
-## 4. CelebA
+## 5. CelebA
 
 Download the file named: img_align_celeba.zip from [this link](https://drive.google.com/drive/folders/0B7EVK8r0v71pTUZsaXdaSnZBZzg?resourcekey=0-rJlzl934LzC-Xp28GeIBzQ) (reachable via the Google Drive link mentioned [here](https://drive.google.com/drive/folders/0B7EVK8r0v71pWEZsZE9oNnFzTm8?resourcekey=0-5BR16BdXnb8hVj6CNHKzLg&usp=sharing) --> Img --> img_align_celeba.zip) to the data/CelebA folder and unzip there so that your folder hierarchy looks like this:
 
@@ -96,7 +129,7 @@ You can see the generated samples for every epoch of improvement in IS in the wa
 
 In the file celeba_gtn.py you will see settings at the top. You can set train=False. Doing so and running celeba_gtn.py will generate two folders in the out/CelebA folder -- real and generated. There you can find both real decoded images and generated images, respectively. You can also change other settings there, e.g. to produce interpolations you can set interpolate=True. 
 
-## 5. HaP
+## 6. HaP
 
 Download the file 'archive' using the download button in this [link](https://www.kaggle.com/datasets/shyambhu/hands-and-palm-images-dataset) to the data/HaP folder and extract it there. Rename the extracted folder to 'hands_kaggle' so that your folder hierarchy looks like this:
 
@@ -130,7 +163,7 @@ You can see the generated samples for every epoch of improvement in IS in the wa
 
 Follow the instructions described earlier for CelebA applied to hap_gtn.py instead of to celeba_gtn.py.
 
-## 6. Using pretrained weights and latent representations:
+## 7. Using pretrained weights and latent representations:
 
 You can skip the autoencoder training to immediately train the GTN by downloading the autoencoder weights and latent representations from the links below, placing them in the correct folders as described, and then running <DATASET_NAME>_gtn.py. 
 
@@ -155,7 +188,7 @@ Download the folder containing the GTN weights for the desired dataset and dimen
 - [HaP GTN weights](https://drive.google.com/drive/folders/1rNtkb9-0XwRlxmnh3i318Jy2Bjta5yDU?usp=sharing)
 
 
-## 7. Misc info
+## 8. Misc info
 
 IS calculations use the included src->IScore code which was obtained from [here](https://github.com/sbarratt/inception-score-pytorch).
 
