@@ -44,7 +44,7 @@ batch_size = 250
 epochs = 500
 tolerance = 3
 n_clusters = 50
-noise_target_by = 0.01
+noise_target_by = 0.01  # leave this > 0, especially if you have integers (otherwise might not have a homeomorphism!)
 
 assert os.path.exists(dataset_path + 'train.pt'), ("Did you run <NAME_OF_DATA>_prep.py first? Couldn't find {} "
                                                    "-- make sure you ran the correct one for the chosen dataset_path."
@@ -257,7 +257,7 @@ model.load_state_dict(torch.load(out_folder_weights + 'weights_batch_{}_toleranc
 with torch.no_grad():
 
     # sampling from clusters by weight
-    x = make_global_samples_from_clusters(1000,
+    x = make_global_samples_from_clusters(10000,
                                           cluster_to_mean, cluster_to_std, cluster_to_sampling_weight)
     y_hat = model(x)
 
