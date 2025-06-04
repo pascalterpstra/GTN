@@ -78,8 +78,7 @@ cluster_to_mean, cluster_to_std = torch.load(dataset_path + 'train_cluster_to_me
 
 
 def make_global_samples_from_clusters(n_samples, cluster_to_mean, cluster_to_std ,cluster_to_sampling_weight):
-    # sampling from target rays in each cluster, with number of samples from cluster depending on size of cluster
-    # assert n_samples >= n_clusters, "Number of samples to generate smaller than number of clusters!"
+
     s_samples_global = []
 
     idx = [i for i in cluster_to_mean.keys() if i in cluster_to_sampling_weight.keys()]
