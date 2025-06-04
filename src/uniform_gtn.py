@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
+from torch.utils.data import SubsetRandomSampler
 
 from utils import *
 
@@ -42,7 +43,7 @@ lr = 1e-3
 batch_size = 250
 epochs = 500
 tolerance = 3
-n_clusters = 100
+n_clusters = 50
 noise_target_by = 0.01
 
 assert os.path.exists(dataset_path + 'train.pt'), ("Did you run <NAME_OF_DATA>_prep.py first? Couldn't find {} "
@@ -50,20 +51,26 @@ assert os.path.exists(dataset_path + 'train.pt'), ("Did you run <NAME_OF_DATA>_p
                                                    .format(dataset_path + 'train.pt'))
 train_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'train.pt', dataset_path=dataset_path, transform=None,
                                     subset='train', n_clusters=n_clusters, noise_target_by=noise_target_by)
-val_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'val.pt', dataset_path=dataset_path, transform=None,
-                                  subset='val', n_clusters=n_clusters, cluster_to_mean=train_dataset.cluster_to_mean,
-                                  cluster_to_std=train_dataset.cluster_to_std, noise_target_by=noise_target_by,
-                                  kmeans=train_dataset.kmeans)
-test_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'test.pt', dataset_path=dataset_path, transform=None,
-                                   subset='test', n_clusters=n_clusters, cluster_to_mean=train_dataset.cluster_to_mean,
-                                   cluster_to_std=train_dataset.cluster_to_std, noise_target_by=noise_target_by,
-                                   kmeans=train_dataset.kmeans)
 
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=True)
-val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, num_workers=0, shuffle=True)
+# splitting the source-target training set to train/val 80/20:
+val_pct = 0.2
 
-print(len(train_dataset))
-print(len(val_dataset))
+n_train = len(train_dataset)
+idx = list(range(n_train))
+idx_split = int(np.floor(val_pct * n_train))
+
+np.random.seed(random_seed)
+np.random.shuffle(idx)
+
+# splitting the train data into train and val using the indices above and a torch SubsetRandomSampler
+
+train_idx, val_idx = idx[idx_split:], idx[:idx_split]
+train_sampler = SubsetRandomSampler(train_idx)
+val_sampler = SubsetRandomSampler(val_idx)
+
+train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler)
+val_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=val_sampler)
+
 train_mean, train_std = torch.load(dataset_path+'train_mean.pt'), torch.load(dataset_path+ 'train_std.pt')
 
 cluster_to_sampling_weight = torch.load(dataset_path + 'train_cluster_to_sampling_weight_n_clusters_{}.pt'.format(n_clusters))
@@ -79,16 +86,15 @@ def make_global_samples_from_clusters(n_samples, cluster_to_mean, cluster_to_std
     random.shuffle(idx)
 
     for id_cluster in idx:
-        m = cluster_to_mean[id_cluster]
+        m, s = cluster_to_mean[id_cluster], cluster_to_std[id_cluster]
         n_to_sample_from_cluster = int(np.ceil(n_samples * cluster_to_sampling_weight[id_cluster]))
 
         # sampling randomly in cluster
-        s_samples_local_cluster = torch.randn((n_to_sample_from_cluster, x_dim)) * cluster_to_std[id_cluster]
+        s_samples_local_cluster = torch.randn((n_to_sample_from_cluster, x_dim))# * cluster_to_std[id_cluster]
+        s_samples_local_cluster = s_samples_local_cluster * s + m
 
-        # adding m to local samples, currently treated as centred around cluster mean, to obtain global samples (from
-        # a vector with m being its origin to a vector with '0' being its origin)
-        s_samples_global_cluster = m + s_samples_local_cluster
-        s_samples_global.append(s_samples_global_cluster)
+        # appending to all samples
+        s_samples_global.append(s_samples_local_cluster)
 
     all_samples_global = torch.cat(s_samples_global)
     randomly_chosen_ix = random.sample(range(len(all_samples_global)), n_samples)

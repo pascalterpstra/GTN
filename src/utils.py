@@ -153,56 +153,28 @@ class NormalToTrgtDataset(Dataset):
                  train_mean=None, train_std=None, n_clusters=1, noise_target_by=0,
                  kmeans=None, cluster_to_mean=None, cluster_to_std=None):
 
+        self.transform = transform
+        self.target_transform = target_transform
         self.trgt = torch.load(trgt_filepath, map_location=torch.device(DEVICE))[:n_samples_max]
         self.cluster_to_target_norms = {}
         self.d = self.trgt.shape[-1]
         if noise_target_by > 0:
             self.trgt = torch.normal(self.trgt, noise_target_by) #0.0001
 
-        if n_clusters > 1:
-            # if 'x_{}_{}_n_clusters_{}.pt'.format(subset, n_samples_max, n_clusters) in os.listdir(dataset_path) and 'y_{}_{}_n_clusters_{}.pt'.format(subset,
-            #                                                                                                   n_samples_max, n_clusters) in os.listdir(
-            #         dataset_path):
-            #     x_filepath = dataset_path + 'x_{}_{}_n_clusters_{}.pt'.format(subset, n_samples_max, n_clusters)
-            #     y_filepath = dataset_path + 'y_{}_{}_n_clusters_{}.pt'.format(subset, n_samples_max, n_clusters)
-            #     print("Found dataset with cosine sim label: {} and {}. Loading.".format(x_filepath, y_filepath))
-            #     self.x = torch.load(x_filepath, map_location=torch.device(DEVICE))
-            #     self.y = torch.load(y_filepath, map_location=torch.device(DEVICE))
-            # else:
-            clusters, kmeans = make_clusters(x=self.trgt, n_clusters=n_clusters, kmeans=kmeans)
-            self.kmeans = kmeans
+        clusters, kmeans = make_clusters(x=self.trgt, n_clusters=n_clusters, kmeans=kmeans)
+        self.kmeans = kmeans
 
-            (self.x, self.y, self.cluster_to_mean, self.cluster_to_std,
-             self.cluster_to_rays, self.cluster_to_sampling_weight) \
-                = combine_labels_from_clusters(clusters, cluster_to_mean, cluster_to_std, subset, self.trgt.shape[0])
-            torch.save(self.x, dataset_path + 'x_{}_{}_n_clusters_{}.pt'.format(subset, n_samples_max, n_clusters))
-            torch.save(self.y, dataset_path + 'y_{}_{}_n_clusters_{}.pt'.format(subset, n_samples_max, n_clusters))
+        (self.x, self.y, self.cluster_to_mean, self.cluster_to_std,
+         self.cluster_to_rays, self.cluster_to_sampling_weight) \
+            = combine_labels_from_clusters(clusters, cluster_to_mean, cluster_to_std, subset, self.trgt.shape[0])
+        torch.save(self.x, dataset_path + 'x_{}_{}_n_clusters_{}.pt'.format(subset, n_samples_max, n_clusters))
+        torch.save(self.y, dataset_path + 'y_{}_{}_n_clusters_{}.pt'.format(subset, n_samples_max, n_clusters))
 
-            torch.save(self.cluster_to_mean, dataset_path + '{}_cluster_to_mean_n_clusters_{}.pt'.format(subset, n_clusters))
-            torch.save(self.cluster_to_std, dataset_path + '{}_cluster_to_std_n_clusters_{}.pt'.format(subset, n_clusters))
-            torch.save(self.cluster_to_rays, dataset_path + '{}_cluster_to_rays_n_clusters_{}.pt'.format(subset, n_clusters))
-            torch.save(self.cluster_to_sampling_weight, dataset_path + '{}_cluster_to_sampling_weight_n_clusters_{}.pt'.format(subset, n_clusters))
-            torch.save(self.cluster_to_target_norms, dataset_path + '{}_cluster_to_target_norms_n_clusters_{}.pt'.format(subset, n_clusters))
-
-        else:
-            if train_mean is not None and train_std is not None:
-                self.trgt = (self.trgt - train_mean) / train_std
-
-            self.x = torch.randn(self.trgt.shape, device=DEVICE)
-
-            # if 'x_{}_{}.pt'.format(subset, n_samples_max) in os.listdir(dataset_path) and 'y_{}_{}.pt'.format(subset,n_samples_max) in os.listdir(dataset_path):
-            #     x_filepath = dataset_path + 'x_{}_{}.pt'.format(subset, n_samples_max)
-            #     y_filepath = dataset_path + 'y_{}_{}.pt'.format(subset, n_samples_max)
-            #     print("Found dataset with cosine sim label: {} and {}. Loading.".format(x_filepath, y_filepath))
-            #     self.x = torch.load(x_filepath, map_location=torch.device(DEVICE))
-            #     self.y = torch.load(y_filepath, map_location=torch.device(DEVICE))
-            # else:
-            self.x, self.y = create_labels(self.x, self.trgt)
-            torch.save(self.x, dataset_path + 'x_{}_{}.pt'.format(subset, n_samples_max))
-            torch.save(self.y, dataset_path + 'y_{}_{}.pt'.format(subset, n_samples_max))
-
-        self.transform = transform
-        self.target_transform = target_transform
+        torch.save(self.cluster_to_mean, dataset_path + '{}_cluster_to_mean_n_clusters_{}.pt'.format(subset, n_clusters))
+        torch.save(self.cluster_to_std, dataset_path + '{}_cluster_to_std_n_clusters_{}.pt'.format(subset, n_clusters))
+        torch.save(self.cluster_to_rays, dataset_path + '{}_cluster_to_rays_n_clusters_{}.pt'.format(subset, n_clusters))
+        torch.save(self.cluster_to_sampling_weight, dataset_path + '{}_cluster_to_sampling_weight_n_clusters_{}.pt'.format(subset, n_clusters))
+        torch.save(self.cluster_to_target_norms, dataset_path + '{}_cluster_to_target_norms_n_clusters_{}.pt'.format(subset, n_clusters))
 
     def __len__(self):
         return len(self.x)
@@ -265,15 +237,16 @@ def combine_labels_from_clusters(clusters, cluster_to_mean, cluster_to_std, subs
             target_mean_cluster, target_std_cluster = torch.mean(target_cluster, dim=0), torch.std(target_cluster, dim=0)
         else:
             target_mean_cluster, target_std_cluster = cluster_to_mean[i], cluster_to_std[i]
-        # target_mean_cluster = torch.mean(target_cluster, dim=0)
-        target_cluster = target_cluster - target_mean_cluster #/ target_std_cluster
+
+        # normalize for within-cluster labeling with standard normal source
+        target_cluster = (target_cluster - target_mean_cluster) / target_std_cluster
         s = torch.randn(target_cluster.shape, device=DEVICE)
         source_cluster, target_cluster = create_labels(s, target_cluster)
+
         # remove normalization from target and do the same for source:
         target_cluster = target_cluster * target_std_cluster + target_mean_cluster
         source_cluster = source_cluster * target_std_cluster + target_mean_cluster
-        # target_cluster = target_cluster + target_mean_cluster
-        # source_cluster = source_cluster + target_mean_cluster
+
         if target is None:
             target = target_cluster
             source = source_cluster

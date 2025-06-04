@@ -63,7 +63,7 @@ and uncomment:
 - ```dataset_path='../data/2d_uniform/'```
 - ```out_folder_base='../out/2d_uniform/'``` 
 
-and then run ```python3 uniform_gtn.py```
+then change ```n_clusters``` to 1 and then run ```python3 uniform_gtn.py```.
 
 You can navigate to the out/2d_uniform/test folder to see the randomly generated samples all plotted together in a scatter plot using the trained GTN.
 
