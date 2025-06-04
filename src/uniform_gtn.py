@@ -52,10 +52,12 @@ train_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'train.pt', dat
                                     subset='train', n_clusters=n_clusters, noise_target_by=noise_target_by)
 val_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'val.pt', dataset_path=dataset_path, transform=None,
                                   subset='val', n_clusters=n_clusters, cluster_to_mean=train_dataset.cluster_to_mean,
-                                  cluster_to_std=train_dataset.cluster_to_std, noise_target_by=noise_target_by)
+                                  cluster_to_std=train_dataset.cluster_to_std, noise_target_by=noise_target_by,
+                                  kmeans=train_dataset.kmeans)
 test_dataset = NormalToTrgtDataset(trgt_filepath=dataset_path + 'test.pt', dataset_path=dataset_path, transform=None,
                                    subset='test', n_clusters=n_clusters, cluster_to_mean=train_dataset.cluster_to_mean,
-                                   cluster_to_std=train_dataset.cluster_to_std, noise_target_by=noise_target_by)
+                                   cluster_to_std=train_dataset.cluster_to_std, noise_target_by=noise_target_by,
+                                   kmeans=train_dataset.kmeans)
 
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=True)
 val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, num_workers=0, shuffle=True)
