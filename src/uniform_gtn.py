@@ -89,7 +89,7 @@ def make_global_samples_from_clusters(n_samples, cluster_to_mean, cluster_to_std
         n_to_sample_from_cluster = int(np.ceil(n_samples * cluster_to_sampling_weight[id_cluster]))
 
         # sampling randomly in cluster
-        s_samples_local_cluster = torch.randn((n_to_sample_from_cluster, x_dim))# * cluster_to_std[id_cluster]
+        s_samples_local_cluster = torch.randn((n_to_sample_from_cluster, x_dim))
         s_samples_local_cluster = s_samples_local_cluster * s + m
 
         # appending to all samples
