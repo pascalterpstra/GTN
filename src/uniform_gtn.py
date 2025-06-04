@@ -36,7 +36,7 @@ make_dirs([out_folder_train, out_folder_val, out_folder_test, out_folder_weights
 
 x_dim = 2
 d = x_dim
-hidden_dim =10  # why +4? This is the minimum -- see p. 2 on RHS in https://arxiv.org/pdf/2305.18460.pdf
+hidden_dim = 10
 latent_dim = x_dim
 lr = 1e-3
 batch_size = 250
@@ -114,14 +114,15 @@ class h_hat(nn.Module):
         h = self.activation(self.fc4(h))
         h = self.activation(self.fc5(h))
         x_hat = self.fc6(h)
-        # x_hat = self.activation_out(self.fc6(h))
         return x_hat
 
 model = h_hat(input_dim=latent_dim, hidden_dim=hidden_dim, output_dim=x_dim).to(DEVICE)
 
+
 def loss_function(x, x_hat):
     reproduction_loss = F.mse_loss(x_hat, x)
     return reproduction_loss
+
 
 optimizer = Adam(model.parameters(), lr=lr)
 
